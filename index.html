@@ -417,6 +417,7 @@ function tourIndex(ds){
 function normSc(q){q=String(q||'').toUpperCase().replace(/\s+/g,'');if(/^\d+$/.test(q))q='SC'+q;return q;}
 function findTours(q,ds){q=normSc(q);if(!q)return [];const M=tourIndex(ds);
   if(M[q])return M[q];
+  {const m=/^SC[A-Z]+(\d+)$/.exec(q);if(m&&M['SC'+m[1]])return M['SC'+m[1]];} // SCE564 → SC564
   return Object.keys(M).filter(k=>k.startsWith(q)).sort((a,b)=>a.localeCompare(b,'fr',{numeric:true})).slice(0,12).flatMap(k=>M[k]);}
 function showTour(sc){
   if(!(D&&D.P&&D.P[sc]))return false;selectTour(sc);
@@ -1092,7 +1093,7 @@ document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.valu
   if(!/^\d{4}-\d{2}-\d{2}$/.test(dq)||isNaN(new Date(dq+'T12:00:00')))dq=today;
   // &sc=SC271 (ou &tour=SC271) : cherche ce tour dans tous les communiqués du jour et le met en surbrillance
   const sq=normSc(Q.get('sc')||Q.get('tour')||'');
-  if(sq){const c=tourIndex(dq)[sq]||[];const hit=(id&&c.find(f=>f.id===id))||c[0];
+  if(sq){const c=findTours(sq,dq).filter((f,i,a)=>f.sc===a[0].sc);const hit=(id&&c.find(f=>f.id===id))||c[0];
     if(hit)id=hit.id;
     else if(!id){ui.view='home';ui.lq=sq;ui.lqd=dq===today?'':dq;return;}}
   if(!id)return;
@@ -1100,7 +1101,7 @@ document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.valu
   if(dq!==today){ui.pkdate=dq;const d=new Date(dq+'T12:00:00');openPlan(dayPlan(d),'Le '+d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}));}
   else openLine(id);
   ui.view='line';ui.lqFocus=false;
-  if(sq)setTimeout(()=>{try{showTour(sq);}catch(e){}},60);
+  if(sq)setTimeout(()=>{try{const f=findTours(sq,dq)[0];showTour(f&&f.id===CL?f.sc:sq);}catch(e){}},60);
   // &graphique=true : ouvre directement le graphique en plein écran
   let g='';try{g=(new URLSearchParams(location.search).get('graphique')||'').trim().toLowerCase();}catch(e){}
   if(['true','1','oui','yes'].includes(g)){
