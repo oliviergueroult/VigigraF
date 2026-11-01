@@ -1050,7 +1050,16 @@ document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.valu
   const ids=Object.keys(LIB.lines);
   const id=ids.find(k=>k.toUpperCase()===p)||ids.find(k=>(LIB.lines[k].legend||[]).some(x=>String(x.l).toUpperCase()===p));
   if(!id)return;
-  openLine(id);ui.view='line';ui.lqFocus=false;
+  const Q=new URLSearchParams(location.search);
+  // &date=2026-11-01 : graphique de ce jour (sinon aujourd'hui)
+  const dq=(Q.get('date')||'').trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(dq)){CL=id;const dt=new Date(dq+'T12:00:00');if(!isNaN(dt))openPlan(dayPlan(dt),'');else openLine(id);}
+  else openLine(id);
+  ui.view='line';ui.lqFocus=false;
+  // &sc=SC271 (ou &tour=SC271) : met ce tour en surbrillance
+  let sq=(Q.get('sc')||Q.get('tour')||'').trim().toUpperCase().replace(/\s+/g,'');
+  if(/^\d+$/.test(sq))sq='SC'+sq;
+  if(sq)setTimeout(()=>{try{if(D&&D.P&&D.P[sq])selectTour(sq);}catch(e){}},60);
   // &graphique=true : ouvre directement le graphique en plein écran
   let g='';try{g=(new URLSearchParams(location.search).get('graphique')||'').trim().toLowerCase();}catch(e){}
   if(['true','1','oui','yes'].includes(g)){
