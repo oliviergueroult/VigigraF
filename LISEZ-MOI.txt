@@ -2,11 +2,13 @@ VIGIGRAF — GRAPHIQUE & COMMUNIQUÉ, DÉPÔT SAINT-PIERRE — ORDINATEUR ET TÉ
 ==================================================================================
 
 
-APPLICATION: https://oliviergueroult.github.io/VigigraF/
+APPLICATION: https://vigigraf.vigibus.fr
+(adresse GitHub d'origine : https://oliviergueroult.github.io/VigigraF/ — redirige vers la précédente)
 GESTION (GitHub): https://github.com/oliviergueroult/VigigraF  (Settings > Pages)
 Ancienne adresse Netlify: https://vigigraf.netlify.app
 
-Liens directs : .../VigigraF/?ligne=12   et   .../VigigraF/?ligne=12&graphique=true
+Liens directs : https://vigigraf.vigibus.fr/?ligne=12   et   https://vigigraf.vigibus.fr/?ligne=12&graphique=true
+Ne supprimez pas le fichier CNAME du dépôt : il relie le site à vigigraf.vigibus.fr.
 
 Ce dossier contient l'appli complète. Pour l'installer sur un ordinateur ou un
 téléphone, il faut d'abord la mettre en ligne une fois (gratuit, 5 minutes).

@@ -388,8 +388,8 @@ function rtmEntry(L,r,pl0){const pl=rtmPl(r,pl0);const e=L.catalog.find(x=>x.cod
 function rtmMsg(r){return "graphicage du jour d'après le calendrier RTM";}
 function openPlan(pl,prefix){
   {const r=rtmFor(LN(),pl.ds);
-   if(r&&r.none){openEntry(entryFor(pl.jour==='dimanche'?'semaine':pl.jour,'normale'));ui.pkmsg=`${prefix||"Aujourd'hui"} : pas de ${CL} d'après le fichier RTM.`;return;}
-   if(r){const e=rtmEntry(LN(),r,pl);openEntry(e);ui.pkmsg=(prefix?prefix+' : ':'')+rtmMsg(r)+'.';ui.rtm=r;return;}}
+   if(r&&r.none){openEntry(entryFor(pl.jour==='dimanche'?'semaine':pl.jour,'normale'));ui.pkmsg=prefix?`${prefix} : pas de ${CL} d'après le calendrier RTM.`:'';return;}
+   if(r){const e=rtmEntry(LN(),r,pl);openEntry(e);ui.pkmsg=prefix?prefix+' : '+rtmMsg(r)+'.':'';ui.rtm=r;return;}}
   ui.rtm=null;
   if(pl.none){openEntry(entryFor('semaine','normale'));ui.pkmsg=(prefix||"Aujourd'hui")+' : pas de service.';return;}
   if((LN().sansJour||[]).includes(pl.jour)&&!(pl.commerce&&LN().dimCommerce)){openEntry(entryFor('semaine','normale'));ui.pkmsg=`${prefix?prefix+' : ':''}la ${CL} ne circule pas le ${JL[pl.jour].toLowerCase()}${LN().dimCommerce?' (sauf dimanches commerciaux : Noël, soldes)':''}.`;return;}
