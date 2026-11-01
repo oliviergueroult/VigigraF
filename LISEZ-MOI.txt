@@ -1,0 +1,70 @@
+VIGIGRAF — GRAPHIQUE & COMMUNIQUÉ, DÉPÔT SAINT-PIERRE — ORDINATEUR ET TÉLÉPHONE
+==================================================================================
+
+
+APPLICATION: https://oliviergueroult.github.io/VigigraF/
+GESTION (GitHub): https://github.com/oliviergueroult/VigigraF  (Settings > Pages)
+Ancienne adresse Netlify: https://vigigraf.netlify.app
+
+Liens directs : .../VigigraF/?ligne=12   et   .../VigigraF/?ligne=12&graphique=true
+
+Ce dossier contient l'appli complète. Pour l'installer sur un ordinateur ou un
+téléphone, il faut d'abord la mettre en ligne une fois (gratuit, 5 minutes).
+
+Important : ne l'ouvrez pas en double-cliquant sur index.html. Ouverte comme un
+simple fichier, l'appli ne peut ni s'installer ni fonctionner hors connexion.
+
+
+1. METTRE L'APPLI EN LIGNE (une seule fois)
+-------------------------------------------
+a) Allez sur  https://app.netlify.com/drop
+b) Glissez le dossier « VigigraF » (celui qui contient index.html) dans la zone.
+c) Netlify affiche une adresse du type  https://quelque-chose.netlify.app
+d) Créez un compte gratuit Netlify et « réclamez » le site (claim) pour qu'il
+   reste en ligne durablement. Vous pouvez ensuite le renommer :
+   Site configuration > Change site name  (ex. graphicage-saint-pierre).
+
+Gardez cette adresse : c'est elle qu'on ouvre sur chaque appareil.
+
+
+2. INSTALLER L'APPLI
+--------------------
+Ordinateur (Windows ou Mac) — Chrome ou Edge :
+  ouvrez l'adresse, puis cliquez sur « Installer l'appli » en haut de la page
+  (ou sur l'icône d'installation à droite de la barre d'adresse).
+  L'appli apparaît dans le menu Démarrer / le Launchpad, avec son icône.
+
+iPhone / iPad — Safari :
+  ouvrez l'adresse, bouton Partager (carré avec flèche) > « Sur l'écran d'accueil ».
+
+Android — Chrome :
+  ouvrez l'adresse, menu ⋮ > « Installer l'application »
+  (ou « Ajouter à l'écran d'accueil »).
+
+Une fois installée, l'appli s'ouvre en plein écran et marche sans connexion.
+
+
+3. VOS DONNÉES
+--------------
+• Chaque modification est enregistrée automatiquement sur l'appareil.
+• Chaque appareil garde ses propres données.
+• Pour passer de l'ordinateur au téléphone (ou à un collègue) :
+    « Sauvegarder » crée un fichier .json  >  envoyez-le (mail, AirDrop, Drive…)
+    >  sur l'autre appareil, « Ouvrir… » et choisissez ce fichier.
+• « Repartir des données du PDF » (dans la Vue d'ensemble) efface vos
+  modifications sur cet appareil. Pensez à sauvegarder avant.
+• « Exporter PDF » crée le graphicage + le communiqué en A3. Sur téléphone, il
+  passe par le menu de partage (Enregistrer dans Fichiers, Mail…).
+
+
+4. METTRE À JOUR L'APPLI PLUS TARD
+----------------------------------
+Sur GitHub : ouvrez le dépôt VigigraF > Add file > Upload files, glissez le CONTENU
+du nouveau dossier VigigraF (index.html, sw.js, manifest.webmanifest, icons, lib,
+LISEZ-MOI.txt), puis « Commit changes ». Le site se met à jour en 1 à 2 minutes.
+Les appareils récupèrent la nouvelle version à la prochaine ouverture avec
+connexion. Les données enregistrées sur les appareils ne sont pas effacées.
+
+
+Alternative à Netlify : GitHub Pages (gratuit aussi), en déposant le contenu de
+ce dossier dans un dépôt et en activant Pages dans les réglages du dépôt.
