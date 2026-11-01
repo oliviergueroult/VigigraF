@@ -554,7 +554,7 @@ function exitFull(){ui.full=false;document.documentElement.classList.remove('ful
 ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement)&&ui.full){ui.full=false;document.documentElement.classList.remove('fullon');render();}}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.full){exitFull();}});
 function header(){
-  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 01/11 18h15</span>`;
+  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 01/11 18h21</span>`;
   const canSave=caps.artifact!==null;
   return `<header class="top">
     <div class="ttl"><img class="brandlogo" src="${LOGO}" alt="VigigraF" width="165" height="40">${ui.view==='home'?`<span class="eyebrow">Dépôt Saint-Pierre · ${LIB.order.length} ligne${LIB.order.length>1?'s':''}</span><h1>Lignes</h1></div>`:`<span class="eyebrow">Dépôt Saint-Pierre · ${esc(JL[ui.pick.jour])} ${esc(PL[ui.pick.periode])} · ${esc(ui.entry.pdf||S.version)}</span>
@@ -591,7 +591,7 @@ function homeView(){
       <span class="lt-meta">${nG} graphicage${nG>1?'s':''} · ${esc(JOURS.filter(([j])=>L.catalog.some(c=>c.jour===j)).map(([,l])=>l).join(', '))}</span>
       <span class="lt-today ${td.ok?'ok':''}">${td.ok?'● ':''}${esc(td.txt)}</span>${L.note?`<span class="lt-note">${esc(L.note)}</span>`:''}</span></button>`;};
   const tds=(ui.today||dayPlan(new Date())).ds;const qd=ui.lqd||tds;
-  return `<div class="homebar"><div class="tsearch"><div class="trow"><label for="lq" class="tlab">Rechercher un tour SC :</label><input id="lq" class="mono" placeholder="ex. 271" value="${esc(ui.lq||'')}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-label="Numéro du tour"><button class="tgo" data-act="tgo" aria-label="Chercher le tour">Chercher</button></div>
+  return `<div class="homebar"><div class="tsearch"><div class="trow"><label for="lq" class="tlab">Rechercher un tour SC :</label><input id="lq" class="mono" placeholder="ex. 271" value="${esc(ui.lq||'')}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" inputmode="numeric" pattern="[0-9]*" maxlength="8" aria-label="Numéro du tour"></div>
     <label class="field">le <input id="lqd" type="date" value="${esc(qd)}"></label></div>
     <span class="status">${ids.length} ligne${ids.length>1?'s':''}</span></div><div id="tresw">${tourResults()}</div>
   <div class="lgrid">${shown.map(tile).join('')||`<p class="help">Aucune ligne ne correspond à « ${esc(q)} ».</p>`}</div>
@@ -1122,7 +1122,11 @@ function onChange(e){
   if(id&&id.startsWith('t-')&&ui.sel){const k=id.slice(2);const sc=ui.sel;
     change(()=>{const t=S.over.tours[sc]=S.over.tours[sc]||{};t[k]=k==='repas'?e.target.checked:Math.max(0,+e.target.value||0);});return;}
 }
-document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.value;ui.tqShow=false;const w=document.getElementById('tresw');if(w)w.innerHTML='';return;}if(e.target.id==='zoom'||e.target.id==='zoomf'){const old=ui.cw;ui.cw=+e.target.value;const s=document.querySelector('.scroller');if(!s)return;const c=(s.scrollLeft+s.clientWidth/2)/old;const top=s.scrollTop;s.innerHTML=board();s.scrollTop=top;s.scrollLeft=Math.max(0,c*ui.cw-s.clientWidth/2);}});
+document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.value;ui.tqShow=false;const w=document.getElementById('tresw');if(w)w.innerHTML='';
+  // pavé numérique sans touche loupe : la recherche part toute seule au 3e chiffre
+  const v=ui.lq.trim();const dg=v.replace(/\D/g,'');clearTimeout(ui.tqT);
+  if(/^(SC[A-Z]*)?\d{3}$/i.test(v)&&allTours()['SC'+dg])ui.tqT=setTimeout(()=>{if((ui.lq||'').trim()===v){const el=document.getElementById('lq');if(el)el.blur();goTour();}},350);
+  return;}if(e.target.id==='zoom'||e.target.id==='zoomf'){const old=ui.cw;ui.cw=+e.target.value;const s=document.querySelector('.scroller');if(!s)return;const c=(s.scrollLeft+s.clientWidth/2)/old;const top=s.scrollTop;s.innerHTML=board();s.scrollTop=top;s.scrollLeft=Math.max(0,c*ui.cw-s.clientWidth/2);}});
 
 // ?ligne=12 (ou 15S, 80, 509…) : ouvre directement la ligne au chargement
 (function(){
