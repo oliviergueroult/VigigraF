@@ -103,7 +103,7 @@ svg text{font-family:var(--f-mono)}
 @media (max-width:700px){.drawer{top:auto;left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));width:auto;height:72vh}}
 .overview .form{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
 .homebar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
-.lsearch input{width:220px;font-size:15px;padding:9px 12px}
+.lsearch input{width:220px;font-size:15px;padding:9px 12px}.tsearch{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}.tres{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px}.tfound{display:flex;gap:14px;align-items:center;text-align:left;background:var(--panel,#fff);border:2px solid #D2541F;border-radius:12px;padding:10px 14px;cursor:pointer;font:inherit;color:inherit}.tfound:hover{background:#fff4ee}.tfound .lt-num{flex:none}.tf-body{display:flex;flex-direction:column;gap:2px;font-size:16px}.tf-meta{font-size:12.5px;color:var(--muted)}
 .lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
 .ltile{display:flex;align-items:stretch;gap:14px;padding:14px;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);text-align:left;cursor:pointer;min-width:0}
 .ltile:hover{border-color:var(--ink);box-shadow:0 4px 14px rgba(10,20,30,.08)}
@@ -400,6 +400,34 @@ function openPlan(pl,prefix){
   else ui.pkmsg=prefix?`${prefix} : ${want}${pl.ferie?' (jour férié)':''}.`:'';
 }
 function openLine(l){CL=l;openPlan(ui.today||dayPlan(new Date()),'');}
+// ---- recherche d'un tour dans tous les communiqués, pour une date donnée
+const TIDX={};
+function planCode(id,pl){
+  const sv={CL,CUR,S,SAVED,ORIG,u:{pick:ui.pick,entry:ui.entry,pkmsg:ui.pkmsg,rtm:ui.rtm,sel:ui.sel,mode:ui.mode,course:ui.course,resetScroll:ui.resetScroll}};
+  let code=null,off=false;
+  try{CL=id;openPlan(pl,'X');code=CUR;off=!!pl.none||/pas de service|ne circule pas|pas de .* d'après le calendrier/.test(ui.pkmsg||'');}catch(e){}
+  CL=sv.CL;CUR=sv.CUR;S=sv.S;SAVED=sv.SAVED;ORIG=sv.ORIG;Object.assign(ui,sv.u);
+  return off?null:code;}
+function tourIndex(ds){
+  if(TIDX[ds])return TIDX[ds];
+  const pl=dayPlan(new Date(ds+'T12:00:00'));const M={};
+  for(const id of LIB.order){const code=planCode(id,pl);if(!code)continue;let P;try{P=piecesOf(LIB.lines[id].graphs[code]).P;}catch(e){continue;}
+    for(const sc in P)(M[sc]=M[sc]||[]).push({id,code,sc,ps:P[sc]});}
+  return TIDX[ds]=M;}
+function normSc(q){q=String(q||'').toUpperCase().replace(/\s+/g,'');if(/^\d+$/.test(q))q='SC'+q;return q;}
+function findTours(q,ds){q=normSc(q);if(!q)return [];const M=tourIndex(ds);
+  if(M[q])return M[q];
+  return Object.keys(M).filter(k=>k.startsWith(q)).sort((a,b)=>a.localeCompare(b,'fr',{numeric:true})).slice(0,12).flatMap(k=>M[k]);}
+function showTour(sc){
+  if(!(D&&D.P&&D.P[sc]))return false;selectTour(sc);
+  if(!ui.full)setTimeout(()=>{const s=document.querySelector('.scroller');if(s)s.scrollIntoView({block:'start',behavior:'auto'});},120);
+  return true;}
+function openFound(id,ds,sc){
+  CL=id;const d=new Date(ds+'T12:00:00');const today=(ui.today||dayPlan(new Date())).ds;
+  if(ds===today){ui.pkdate='';openPlan(dayPlan(d),'');}
+  else{ui.pkdate=ds;openPlan(dayPlan(d),'Le '+d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}));}
+  ui.view='line';ui.lqFocus=false;render();window.scrollTo(0,0);
+  setTimeout(()=>showTour(sc),60);}
 function openEntry(e){ui.pick={jour:e.jour,periode:e.periode};ui.entry=e;useGraph(e.code);ui.sel=null;ui.mode='home';ui.course=null;ui.resetScroll=true;}
 (function(){const pl=dayPlan(new Date());ui.today=pl;openPlan(pl,'');})();
 function css(v){return 'var('+v+')';}
@@ -502,10 +530,17 @@ const RTMC={'12':'#007BC4','12B':'#007BC4','12S':'#007BC4','15':'#BD1D1D','15S':
 function lcol(l){return RTMC[l]||css((LINES[l]||LINES['12']).v);}
 function badge(l,extra){return `<span class="ln rtm" style="--lc:${lcol(l)};${extra||''}">${esc(l)}</span>`;}
 function homeView(){
-  const q=(ui.lq||'').trim().toUpperCase();
+  const q=(ui.lq||'').trim();
   const ids=[...LIB.order].sort((a,b)=>(parseInt(a)||999)-(parseInt(b)||999)||a.localeCompare(b));
-  const match=id=>!q||id.toUpperCase().startsWith(q)||LIB.lines[id].legend.some(x=>x.l.toUpperCase().startsWith(q));
-  const shown=ids.filter(match);
+  const shown=ids;
+  const tds=(ui.today||dayPlan(new Date())).ds;const qd=ui.lqd||tds;
+  const found=q?findTours(q,qd):[];
+  const dlab=new Date(qd+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const fres=!q?'':found.length?`<div class="tres">${found.map(f=>{const L=LIB.lines[f.id];const e=L.catalog.find(c=>c.code===f.code)||{};
+      const a=f.ps[0].start,b=f.ps[f.ps.length-1].end;const svs=[...new Set(f.ps.map(p=>p.sv))].join(', ');
+      return `<button class="tfound" data-found="${esc(f.id+'|'+qd+'|'+f.sc)}"><span class="lt-num rtm" style="--lc:${lcol(f.id)}"><span class="rn">${esc(f.id)}</span><span class="rb"></span></span>
+        <span class="tf-body"><b class="mono">${esc(f.sc)}</b> <span class="mono">${hm(a)} – ${hm(b)}</span><span class="tf-meta">${esc((JL[e.jour]||'')+(e.jour&&e.jour!=='vacances'?' '+(PL[e.periode]||''):''))} · ${esc(f.code)} · voiture ${esc(svs)}</span></span></button>`;}).join('')}</div>`
+    :`<p class="help">Aucun tour ${esc(normSc(q))} le ${esc(dlab)}.</p>`;
   const tile=id=>{const L=LIB.lines[id];const td=lineToday(id);const nG=new Set(L.catalog.map(c=>c.code)).size;
     const mainCol=css((LINES[id]||LINES['12']).v);
     const dests=[...new Set(L.legend.filter(x=>!x.night).map(x=>x.dest))].join(' · ');
@@ -515,8 +550,9 @@ function homeView(){
       <span class="lt-dest">${esc(L.main.hubName)} ↔ ${esc(dests)}</span>
       <span class="lt-meta">${nG} graphicage${nG>1?'s':''} · ${esc(JOURS.filter(([j])=>L.catalog.some(c=>c.jour===j)).map(([,l])=>l).join(', '))}</span>
       <span class="lt-today ${td.ok?'ok':''}">${td.ok?'● ':''}${esc(td.txt)}</span>${L.note?`<span class="lt-note">${esc(L.note)}</span>`:''}</span></button>`;};
-  return `<div class="homebar"><label class="field lsearch">Rechercher une ligne <input id="lq" class="mono" placeholder="ex. 12, 15S, 509" value="${esc(ui.lq||'')}" autocomplete="off"></label>
-    <span class="status">${shown.length} / ${ids.length} ligne${ids.length>1?'s':''}</span></div>
+  return `<div class="homebar"><div class="tsearch"><label class="field lsearch">Rechercher un tour <input id="lq" class="mono" placeholder="ex. SC271 ou 271" value="${esc(ui.lq||'')}" autocomplete="off" inputmode="text"></label>
+    <label class="field">le <input id="lqd" type="date" value="${esc(qd)}"></label></div>
+    <span class="status">${ids.length} ligne${ids.length>1?'s':''}</span></div>${fres}
   <div class="lgrid">${shown.map(tile).join('')||`<p class="help">Aucune ligne ne correspond à « ${esc(q)} ».</p>`}</div>
   <section class="panel overview"><div class="ov-grid"><div class="ov-col">${calendarPanel()}</div><div class="ov-col"><h3>Ajouter une ligne</h3><p class="help" style="margin:0">Envoyez les PDF de graphicage de la ligne (semaine, samedi, dimanche, vacances, inter, été) : ils sont lus, contrôlés contre leur communiqué, puis ajoutés ici.</p></div></div></section>`;
 }
@@ -969,8 +1005,9 @@ async function exportPDF(btn){
 }
 
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-ligne],[data-jour],[data-periode],[data-shift],[data-act],[data-id],[data-sc],[data-line],[data-gap],[data-copy]');if(!t)return;
+  const t=e.target.closest('[data-found],[data-ligne],[data-jour],[data-periode],[data-shift],[data-act],[data-id],[data-sc],[data-line],[data-gap],[data-copy]');if(!t)return;
   if(t.dataset.copy){const ta=document.getElementById(t.dataset.copy);try{await navigator.clipboard.writeText(ta.value);t.textContent='Copié';}catch(err){ta.focus();ta.select();}return;}
+  if(t.dataset.found){const [id,ds,sc]=t.dataset.found.split('|');openFound(id,ds,sc);return;}
   if(t.dataset.ligne){openLine(t.dataset.ligne);ui.view='line';ui.lqFocus=false;render();window.scrollTo(0,0);return;}
   if(t.dataset.jour){const j=t.dataset.jour;const ok=LN().catalog.some(x=>x.jour===j&&x.periode===ui.pick.periode);openEntry(entryFor(j,ok?ui.pick.periode:'normale'));ui.pkmsg='';render();return;}
   if(t.dataset.periode){openEntry(entryFor(ui.pick.jour,t.dataset.periode));ui.pkmsg='';render();return;}
@@ -1019,10 +1056,11 @@ document.addEventListener('wheel',e=>{
   const rest=dy-inner;
   if(Math.abs(rest)>0.5&&!ui.full)window.scrollBy(0,rest);
 },{passive:false});
-document.addEventListener('keydown',e=>{if(e.target.id==='lq'&&e.key==='Enter'){const b=document.querySelector('.ltile');if(b){e.preventDefault();b.click();}return;}if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.line){e.preventDefault();e.target.click();}});
+document.addEventListener('keydown',e=>{if(e.target.id==='lq'&&e.key==='Enter'){const b=document.querySelector('.tfound');if(b){e.preventDefault();b.click();}return;}if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.line){e.preventDefault();e.target.click();}});
 document.addEventListener('change',e=>{setTimeout(()=>onChange(e),0);});
 function onChange(e){
   const id=e.target.id;
+  if(id==='lqd'){ui.lqd=e.target.value||'';render();return;}
   if(id==='pkdate'){const v=e.target.value;ui.pkdate=v;if(!v){ui.pkmsg='';render();return;}const d=new Date(v+'T12:00:00');const pl=dayPlan(d);
     const lab=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
     if(pl.none){ui.pkmsg=`Le ${lab} : pas de service.`;render();return;}
@@ -1045,21 +1083,24 @@ document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.valu
 
 // ?ligne=12 (ou 15S, 80, 509…) : ouvre directement la ligne au chargement
 (function(){
-  let p='';try{p=(new URLSearchParams(location.search).get('ligne')||'').trim().toUpperCase();}catch(e){}
-  if(!p)return;
+  let Q;try{Q=new URLSearchParams(location.search);}catch(e){return;}
+  const p=(Q.get('ligne')||'').trim().toUpperCase();
   const ids=Object.keys(LIB.lines);
-  const id=ids.find(k=>k.toUpperCase()===p)||ids.find(k=>(LIB.lines[k].legend||[]).some(x=>String(x.l).toUpperCase()===p));
-  if(!id)return;
-  const Q=new URLSearchParams(location.search);
+  let id=p?(ids.find(k=>k.toUpperCase()===p)||ids.find(k=>(LIB.lines[k].legend||[]).some(x=>String(x.l).toUpperCase()===p))):null;
   // &date=2026-11-01 : graphique de ce jour (sinon aujourd'hui)
-  const dq=(Q.get('date')||'').trim();
-  if(/^\d{4}-\d{2}-\d{2}$/.test(dq)){CL=id;const dt=new Date(dq+'T12:00:00');if(!isNaN(dt))openPlan(dayPlan(dt),'');else openLine(id);}
+  let dq=(Q.get('date')||'').trim();const today=(ui.today||dayPlan(new Date())).ds;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dq)||isNaN(new Date(dq+'T12:00:00')))dq=today;
+  // &sc=SC271 (ou &tour=SC271) : cherche ce tour dans tous les communiqués du jour et le met en surbrillance
+  const sq=normSc(Q.get('sc')||Q.get('tour')||'');
+  if(sq){const c=tourIndex(dq)[sq]||[];const hit=(id&&c.find(f=>f.id===id))||c[0];
+    if(hit)id=hit.id;
+    else if(!id){ui.view='home';ui.lq=sq;ui.lqd=dq===today?'':dq;return;}}
+  if(!id)return;
+  CL=id;
+  if(dq!==today){ui.pkdate=dq;const d=new Date(dq+'T12:00:00');openPlan(dayPlan(d),'Le '+d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}));}
   else openLine(id);
   ui.view='line';ui.lqFocus=false;
-  // &sc=SC271 (ou &tour=SC271) : met ce tour en surbrillance
-  let sq=(Q.get('sc')||Q.get('tour')||'').trim().toUpperCase().replace(/\s+/g,'');
-  if(/^\d+$/.test(sq))sq='SC'+sq;
-  if(sq)setTimeout(()=>{try{if(D&&D.P&&D.P[sq])selectTour(sq);}catch(e){}},60);
+  if(sq)setTimeout(()=>{try{showTour(sq);}catch(e){}},60);
   // &graphique=true : ouvre directement le graphique en plein écran
   let g='';try{g=(new URLSearchParams(location.search).get('graphique')||'').trim().toLowerCase();}catch(e){}
   if(['true','1','oui','yes'].includes(g)){
