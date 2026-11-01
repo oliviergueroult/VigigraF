@@ -89,7 +89,7 @@ html.fullon,html.fullon body{overflow:hidden;overscroll-behavior:none}
 .shift button{padding:0 7px;font-size:13px;line-height:16px;border-radius:4px}
 .sv b{font-family:var(--f-display);font-size:21px;font-weight:700;line-height:1;letter-spacing:.02em}
 .sv span{font-family:var(--f-mono);font-size:10px;color:var(--muted)}
-.sv.hit b{color:var(--accent)}
+.sv.hit b{color:var(--accent)}.sv.svsel{background:#FFE45C}.sv.svsel b,.sv.svsel span{color:#111!important}
 svg text{font-family:var(--f-mono)}
 .c-reg{cursor:pointer}
 .c-reg:hover,.c-hit:hover{filter:brightness(1.12)}
@@ -415,7 +415,41 @@ function tourIndex(ds){
     for(const sc in P)(M[sc]=M[sc]||[]).push({id,code,sc,ps:P[sc]});}
   return TIDX[ds]=M;}
 function normSc(q){q=String(q||'').toUpperCase().replace(/\s+/g,'');if(/^\d+$/.test(q))q='SC'+q;return q;}
-let ALLT=null;const PCACHE={};
+let ALLT=null,ALLSV=null;const PCACHE={},DAYC={};
+function allSv(){if(ALLSV)return ALLSV;ALLSV={};
+  for(const id of LIB.order)for(const code in LIB.lines[id].graphs){const seen=new Set();
+    for(const c of LIB.lines[id].graphs[code].courses){if(!c.sv||seen.has(c.sv))continue;seen.add(c.sv);(ALLSV[c.sv]=ALLSV[c.sv]||[]).push({id,code});}}
+  return ALLSV;}
+function dayCodes(ds){if(DAYC[ds])return DAYC[ds];const pl=dayPlan(new Date(ds+'T12:00:00'));const o=new Set();
+  for(const id of LIB.order){const c=planCode(id,pl);if(c)o.add(id+'|'+c);}return DAYC[ds]=o;}
+// SV : 4 chiffres (ligne + service), 5 pour les lignes à 3 chiffres (ex. 54021)
+function goSv(sv){
+  const tds=(ui.today||dayPlan(new Date())).ds;const qd=ui.lqd||tds;
+  const R=allSv()[sv]||[];const w=document.getElementById('tresw');
+  if(!R.length){ui.tqShow=true;if(w)w.innerHTML=`<p class="help">Aucun service SV ${esc(sv)} dans les graphiques.</p>`;return;}
+  const day=dayCodes(qd);const hit=R.find(g=>day.has(g.id+'|'+g.code));
+  const d=new Date(qd+'T12:00:00');const dlab=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  if(hit){CL=hit.id;if(qd===tds){ui.pkdate='';openPlan(dayPlan(d),'');}else{ui.pkdate=qd;openPlan(dayPlan(d),'Le '+dlab);}}
+  else{const g=R.slice().sort((a,b)=>(a.id===sv.slice(0,a.id.length)?0:1)-(b.id===sv.slice(0,b.id.length)?0:1))[0];
+    CL=g.id;const e=LIB.lines[g.id].catalog.find(c=>c.code===g.code);if(!e)return;openEntry(e);ui.pkdate='';ui.rtm=null;
+    const lab=(JL[e.jour]||'')+(e.jour!=='vacances'?' '+(PL[e.periode]||''):'');
+    ui.pkmsg=`SV ${sv} ne roule pas le ${dlab} : graphique ${lab} (${g.code}).`;}
+  ui.view='line';ui.lqFocus=false;render();window.scrollTo(0,0);setTimeout(()=>showSv(sv),60);}
+function showSv(sv){
+  ui.svSel=sv;ui.sel=null;ui.mode='home';ui.csv=null;render();
+  setTimeout(()=>{const s=document.querySelector('.scroller');if(!s)return;if(!ui.full)s.scrollIntoView({block:'start',behavior:'auto'});
+    const R=D&&D.L&&D.L.rows[sv];if(R)s.scrollTop=Math.max(0,R.y-40);},120);}
+// un seul champ : 2-3 chiffres = tour SC, 4-5 chiffres = service SV
+function goFind(){const v=(ui.lq||'').trim().toUpperCase().replace(/\s+/g,'');if(!v)return;
+  const dg=v.replace(/\D/g,'');
+  if(/^SV/.test(v)||(!/^SC/.test(v)&&dg.length>=4)){goSv(dg);return;}
+  goTour();}
+function findKind(v){v=String(v||'').trim().toUpperCase().replace(/\s+/g,'');const dg=v.replace(/\D/g,'');if(!dg)return null;
+  if(!/^SV/.test(v)&&dg.length<=3&&allTours()['SC'+dg])return 'sc';
+  if(!/^SC/.test(v)&&dg.length>=4&&allSv()[dg])return 'sv';return null;}
+function longerExists(dg){if(Object.keys(allSv()).some(k=>k.length>dg.length&&k.startsWith(dg)))return true;
+  return Object.keys(allTours()).some(k=>{const d=k.replace(/\D/g,'');return d.length>dg.length&&d.startsWith(dg);});}
+const PCACHE_=0;
 function allTours(){if(ALLT)return ALLT;ALLT={};
   for(const id of LIB.order)for(const code in LIB.lines[id].graphs){const G=LIB.lines[id].graphs[code];const seen=new Set();
     for(const c of G.courses){if(seen.has(c.sc))continue;seen.add(c.sc);(ALLT[c.sc]=ALLT[c.sc]||[]).push({id,code});}}
@@ -476,7 +510,7 @@ function openFound(id,ds,sc){
   else{ui.pkdate=ds;openPlan(dayPlan(d),'Le '+d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}));}
   ui.view='line';ui.lqFocus=false;render();window.scrollTo(0,0);
   setTimeout(()=>showTour(sc),60);}
-function openEntry(e){ui.pick={jour:e.jour,periode:e.periode};ui.entry=e;useGraph(e.code);ui.sel=null;ui.mode='home';ui.course=null;ui.resetScroll=true;}
+function openEntry(e){ui.pick={jour:e.jour,periode:e.periode};ui.entry=e;useGraph(e.code);ui.sel=null;ui.svSel=null;ui.mode='home';ui.course=null;ui.resetScroll=true;}
 (function(){const pl=dayPlan(new Date());ui.today=pl;openPlan(pl,'');})();
 function css(v){return 'var('+v+')';}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -554,7 +588,7 @@ function exitFull(){ui.full=false;document.documentElement.classList.remove('ful
 ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement)&&ui.full){ui.full=false;document.documentElement.classList.remove('fullon');render();}}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.full){exitFull();}});
 function header(){
-  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 01/11 18h21</span>`;
+  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 01/11 18h43</span>`;
   const canSave=caps.artifact!==null;
   return `<header class="top">
     <div class="ttl"><img class="brandlogo" src="${LOGO}" alt="VigigraF" width="165" height="40">${ui.view==='home'?`<span class="eyebrow">Dépôt Saint-Pierre · ${LIB.order.length} ligne${LIB.order.length>1?'s':''}</span><h1>Lignes</h1></div>`:`<span class="eyebrow">Dépôt Saint-Pierre · ${esc(JL[ui.pick.jour])} ${esc(PL[ui.pick.periode])} · ${esc(ui.entry.pdf||S.version)}</span>
@@ -591,7 +625,7 @@ function homeView(){
       <span class="lt-meta">${nG} graphicage${nG>1?'s':''} · ${esc(JOURS.filter(([j])=>L.catalog.some(c=>c.jour===j)).map(([,l])=>l).join(', '))}</span>
       <span class="lt-today ${td.ok?'ok':''}">${td.ok?'● ':''}${esc(td.txt)}</span>${L.note?`<span class="lt-note">${esc(L.note)}</span>`:''}</span></button>`;};
   const tds=(ui.today||dayPlan(new Date())).ds;const qd=ui.lqd||tds;
-  return `<div class="homebar"><div class="tsearch"><div class="trow"><label for="lq" class="tlab">Rechercher un tour SC :</label><input id="lq" class="mono" placeholder="ex. 271" value="${esc(ui.lq||'')}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" inputmode="numeric" pattern="[0-9]*" maxlength="8" aria-label="Numéro du tour"></div>
+  return `<div class="homebar"><div class="tsearch"><div class="trow"><label for="lq" class="tlab">Rechercher un tour SC<br>ou un service SV :</label><input id="lq" class="mono" placeholder="ex. 271 ou 4001" value="${esc(ui.lq||'')}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" inputmode="numeric" pattern="[0-9]*" maxlength="8" aria-label="Numéro du tour"></div>
     <label class="field">le <input id="lqd" type="date" value="${esc(qd)}"></label></div>
     <span class="status">${ids.length} ligne${ids.length>1?'s':''}</span></div><div id="tresw">${tourResults()}</div>
   <div class="lgrid">${shown.map(tile).join('')||`<p class="help">Aucune ligne ne correspond à « ${esc(q)} ».</p>`}</div>
@@ -687,6 +721,7 @@ function board(){
   for(const it of L.items){
     if(it.type==='head'){g+=`<rect x="0" y="${it.y}" width="${W}" height="${HEADH}" fill="var(--sheet)"/>${headCells(it.fam,it.ncols,it.y,HEADH)}<line x1="0" x2="${W}" y1="${it.y+HEADH}" y2="${it.y+HEADH}" stroke="var(--rule)"/>`;lab.push(`<div class="svhead" style="height:${HEADH}px">SV</div>`);continue;}
     const {sv,ev,y,fam}=it;const y0=y;
+    if(ui.svSel===sv)g+=`<rect x="0" y="${y0}" width="${W}" height="${ROWH}" fill="#FFE45C" opacity=".30"/>`;
     g+=`<line x1="0" x2="${W}" y1="${y0+ROWH}" y2="${y0+ROWH}" stroke="var(--band2)"/>`;
     // relèves de la rangée
     const rels=[];
@@ -718,7 +753,7 @@ function board(){
     });
     for(const r of rels)g+=`<g class="c-reg" data-id="${r.e.c.id}"><title>${esc('Relève'+(relLieu()?' en ligne à '+(relNom()):'')+' '+hm(r.e.c.rel.t)+' : '+r.e.c.sc+' → '+r.e.c.rel.sc)}</title><rect x="${r.cx-cw/2+2}" y="${y0+14}" width="${cw-4}" height="15" rx="2" fill="var(--ink)"/><text x="${r.cx}" y="${y0+25.5}" font-size="11" text-anchor="middle" fill="var(--sheet)" font-weight="600">${hm(r.e.c.rel.t)}</text></g>`;
     const l2=sv.length>=5?sv.slice(0,3):sv.slice(0,2);
-    lab.push(`<div class="sv ${selSVs.has(sv)?'hit':''}" style="height:${ROWH}px"><b>${esc(sv)}</b><span>ligne ${esc(l2)} · service ${esc(sv.slice(l2.length))}</span><span class="shift"><button data-shift="-1" data-sv="${esc(sv)}" aria-label="Décaler ${esc(sv)} d'une colonne à gauche">‹</button><button data-shift="1" data-sv="${esc(sv)}" aria-label="Décaler ${esc(sv)} d'une colonne à droite">›</button></span></div>`);
+    lab.push(`<div class="sv ${selSVs.has(sv)?'hit':''} ${ui.svSel===sv?'svsel':''}" style="height:${ROWH}px"><b>${esc(sv)}</b><span>ligne ${esc(l2)} · service ${esc(sv.slice(l2.length))}</span><span class="shift"><button data-shift="-1" data-sv="${esc(sv)}" aria-label="Décaler ${esc(sv)} d'une colonne à gauche">‹</button><button data-shift="1" data-sv="${esc(sv)}" aria-label="Décaler ${esc(sv)} d'une colonne à droite">›</button></span></div>`);
   }
   // tours : accolades, étiquettes SC et liens
   const scRow={};D.pieceX={};
@@ -869,7 +904,7 @@ function communique(){
     const C=D.C[sc],r=S.ref[sc]||{};const p1=C.parts[0]||{},p2=C.parts[1]||{};
     const extra=C.parts.length>2?` <span class="muted">+${C.parts.length-2}</span>`:'';
     for(const k in tot)tot[k]+=k==='repas'?(C.repas?1:0):C[k];
-    rows+=`<tr class="r ${ui.sel===sc?'sel':''}" data-sc="${sc}">
+    rows+=`<tr class="r ${ui.sel===sc||(ui.svSel&&D.P[sc]&&D.P[sc].some(p=>p.sv===ui.svSel))?'sel':''}" data-sc="${sc}">
       <td class="l key">${esc(sc)}</td><td class="l muted">${[...new Set(D.P[sc].map(p=>p.sv))].join(' · ')}</td>
       <td class="sep">${hm(p1.cde)}</td><td>${hm(p1.de)}</td><td>${hm(p1.a)}</td>
       <td class="sep">${hm(p2.cde)}</td><td>${hm(p2.de)}</td><td>${hm(p2.a)}${extra}</td>
@@ -889,7 +924,7 @@ function communique(){
 
 // ---------------------------------------------------------------- actions
 function openCourse(id){const c=S.courses.find(c=>c.id===+id);if(!c)return;ui.course=JSON.parse(JSON.stringify(c));ui.mode='course';ui.confirmDel=false;ui.err='';ui.csv=null;render();}
-function selectTour(sc){if(!D.P[sc])return;ui.sel=sc;ui.mode='tour';ui.csv=null;ui.q=sc;render();
+function selectTour(sc){if(!D.P[sc])return;ui.svSel=null;ui.sel=sc;ui.mode='tour';ui.csv=null;ui.q=sc;render();
   const p=D.P[sc][0];const s=document.querySelector('.scroller');const R=D.L&&D.L.rows[p.sv];const px=D.pieceX&&D.pieceX[sc]&&D.pieceX[sc][0];
   if(s&&R&&px){s.scrollTo({left:Math.max(0,px[0]-120),top:Math.max(0,R.y-40),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}
 function val(id){const e=document.getElementById(id);return e?e.value:'';}
@@ -1062,7 +1097,7 @@ document.addEventListener('click',async e=>{
   if(act==='full'){enterFull();return;}
   if(act==='unfull'){exitFull();return;}
   if(act==='tgo'){goTour();return;}
-  if(act==='close'){ui.mode='home';ui.sel=null;ui.csv=null;ui.q='';render();return;}
+  if(act==='close'){ui.mode='home';ui.sel=null;ui.svSel=null;ui.csv=null;ui.q='';render();return;}
   if(act==='undo'){if(undo.length){const u=undo.pop();if(u.line!==CL)CL=u.line;LN().graphs[u.code]=JSON.parse(u.s);const e=LN().catalog.find(x=>x.code===u.code&&x.jour===ui.pick.jour&&x.periode===ui.pick.periode)||LN().catalog.find(x=>x.code===u.code);if(u.code!==CUR)openEntry(e);else useGraph(CUR);saveDraft();if(ui.mode==='course'){ui.mode='home';}render();}return;}
   if(act==='discard'){LIB=JSON.parse(LIB0);useGraph(CUR);dirty=false;undo=[];ui.banner=null;persist();render();return;}
   if(act==='reset'){if(!ui.confirmReset){ui.confirmReset=true;render();return;}ui.confirmReset=false;undo.push({line:CL,code:CUR,s:JSON.stringify(S)});LN().graphs[CUR]=JSON.parse(SAVED);useGraph(CUR);saveDraft();render();return;}
@@ -1099,7 +1134,7 @@ document.addEventListener('wheel',e=>{
   const rest=dy-inner;
   if(Math.abs(rest)>0.5&&!ui.full)window.scrollBy(0,rest);
 },{passive:false});
-document.addEventListener('keydown',e=>{if(e.target.id==='lq'&&e.key==='Enter'){e.preventDefault();e.target.blur();goTour();return;}if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.line){e.preventDefault();e.target.click();}});
+document.addEventListener('keydown',e=>{if(e.target.id==='lq'&&e.key==='Enter'){e.preventDefault();clearTimeout(ui.tqT);e.target.blur();goFind();return;}if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.line){e.preventDefault();e.target.click();}});
 document.addEventListener('change',e=>{setTimeout(()=>onChange(e),0);});
 function onChange(e){
   const id=e.target.id;
@@ -1125,7 +1160,7 @@ function onChange(e){
 document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.value;ui.tqShow=false;const w=document.getElementById('tresw');if(w)w.innerHTML='';
   // pavé numérique sans touche loupe : la recherche part toute seule au 3e chiffre
   const v=ui.lq.trim();const dg=v.replace(/\D/g,'');clearTimeout(ui.tqT);
-  if(/^(SC[A-Z]*)?\d{3}$/i.test(v)&&allTours()['SC'+dg])ui.tqT=setTimeout(()=>{if((ui.lq||'').trim()===v){const el=document.getElementById('lq');if(el)el.blur();goTour();}},350);
+  if(findKind(v))ui.tqT=setTimeout(()=>{if((ui.lq||'').trim()===v){const el=document.getElementById('lq');if(el)el.blur();goFind();}},longerExists(dg)?1500:350);
   return;}if(e.target.id==='zoom'||e.target.id==='zoomf'){const old=ui.cw;ui.cw=+e.target.value;const s=document.querySelector('.scroller');if(!s)return;const c=(s.scrollLeft+s.clientWidth/2)/old;const top=s.scrollTop;s.innerHTML=board();s.scrollTop=top;s.scrollLeft=Math.max(0,c*ui.cw-s.clientWidth/2);}});
 
 // ?ligne=12 (ou 15S, 80, 509…) : ouvre directement la ligne au chargement
@@ -1138,6 +1173,8 @@ document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.valu
   let dq=(Q.get('date')||'').trim();const today=(ui.today||dayPlan(new Date())).ds;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(dq)||isNaN(new Date(dq+'T12:00:00')))dq=today;
   // &sc=SC271 (ou &tour=SC271) : cherche ce tour dans tous les communiqués du jour et le met en surbrillance
+  const svq=(Q.get('sv')||'').replace(/\D/g,'');
+  if(svq&&!(Q.get('sc')||Q.get('tour'))){ui.lq=svq;ui.lqd=dq===today?'':dq;setTimeout(()=>{goSv(svq);},0);return;}
   const sq=normSc(Q.get('sc')||Q.get('tour')||'');
   if(sq){const c=findTours(sq,dq).filter((f,i,a)=>f.sc===a[0].sc);const hit=(id&&c.find(f=>f.id===id))||c[0];
     if(hit)id=hit.id;
