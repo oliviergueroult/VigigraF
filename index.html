@@ -103,7 +103,7 @@ svg text{font-family:var(--f-mono)}
 @media (max-width:700px){.drawer{top:auto;left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));width:auto;height:72vh}}
 .overview .form{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
 .homebar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
-.lsearch input{width:220px;font-size:15px;padding:9px 12px}.tsearch{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}.tres{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px}.tfound{display:flex;gap:14px;align-items:center;text-align:left;background:var(--panel,#fff);border:2px solid #D2541F;border-radius:12px;padding:10px 14px;cursor:pointer;font:inherit;color:inherit}.tfound:hover{background:#fff4ee}.tfound.other{border-color:var(--line,#cfd6de);border-width:1px}.tf-day{color:#2f8f4e;font-weight:600}.tfound .lt-num{flex:none}.tf-body{display:flex;flex-direction:column;gap:2px;font-size:16px}.tf-meta{font-size:12.5px;color:var(--muted)}
+.lsearch input{width:220px;font-size:15px;padding:9px 12px}.tsearch{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}.tres{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px}.tfound{display:flex;gap:14px;align-items:center;text-align:left;background:var(--panel,#fff);border:2px solid #D2541F;border-radius:12px;padding:10px 14px;cursor:pointer;font:inherit;color:inherit}.tfound:hover{background:#fff4ee}.tgo{background:#D2541F;color:#fff;border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:600;cursor:pointer}.tfound.other{border-color:var(--line,#cfd6de);border-width:1px}.tf-day{color:#2f8f4e;font-weight:600}.tfound .lt-num{flex:none}.tf-body{display:flex;flex-direction:column;gap:2px;font-size:16px}.tf-meta{font-size:12.5px;color:var(--muted)}
 .lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
 .ltile{display:flex;align-items:stretch;gap:14px;padding:14px;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);text-align:left;cursor:pointer;min-width:0}
 .ltile:hover{border-color:var(--ink);box-shadow:0 4px 14px rgba(10,20,30,.08)}
@@ -200,7 +200,7 @@ th:first-child,td:first-child{border-left:0}
 tbody tr:nth-child(even) td{background:var(--band2)}
 tr.r{cursor:pointer}
 tbody tr.r:hover td,tbody tr.r:hover td.cond{background:color-mix(in srgb,var(--l12) 28%,var(--sheet))}
-tbody tr.sel td,tbody tr.sel td.cond{background:var(--accent-soft)}
+tbody tr.sel td,tbody tr.sel td.cond{background:#FFE45C!important;color:#111!important}tbody tr.sel td *{color:#111!important}
 td.key{font-weight:600}
 tbody tr td.cond{background:color-mix(in srgb,var(--l12b) 16%,transparent);font-weight:600}
 td .was{display:block;font-size:10px;color:var(--muted);text-decoration:line-through}
@@ -382,7 +382,7 @@ function rtmPl(r,pl){const m=/^\d{4}[A-Z]?([HIEL])([A-Z]{2})/.exec(r.rtm)||[];co
   const j={LV:'semaine',SM:'semaine',ME:'semaine',SA:'samedi',DI:'dimanche',VA:'vacances'}[m[2]]||pl.jour;return {jour:j,periode:j==='vacances'?'normale':per};}
 function rtmEntry(L,r,pl0){const pl=rtmPl(r,pl0);const e=L.catalog.find(x=>x.code===r.app&&x.jour===pl.jour&&x.periode===pl.periode);if(e)return e;
   const base=L.catalog.find(x=>x.code===r.app&&x.jour===pl.jour)||L.catalog.find(x=>x.code===r.app);
-  const g=L.graphs[r.app];const rec="Reconstitué d'après le fichier RTM : horaires officiels, services voiture, tours et relèves déduits — à vérifier";
+  const g=L.graphs[r.app];const rec="Reconstitué d'après le fichier RTM : horaires officiels, SV, tours et relèves déduits — à vérifier";
   return Object.assign({},base&&base.code===r.app?base:{code:r.app,pdf:r.rtm,version:r.rtm.slice(-4),note:''},{jour:pl.jour,periode:pl.periode},g&&g.deduit&&!(base&&base.code===r.app)?{note:rec,pdf:r.rtm}:{});
   return L.catalog.find(x=>x.code===r.app&&x.jour===pl.jour&&x.periode===pl.periode)||L.catalog.find(x=>x.code===r.app&&x.jour===pl.jour)||L.catalog.find(x=>x.code===r.app)||{jour:pl.jour,periode:pl.periode,code:r.app,pdf:r.app,version:r.app.slice(-4),note:''};}
 function rtmMsg(r){return "graphicage du jour d'après le calendrier RTM";}
@@ -436,10 +436,22 @@ function openGraphTour(id,code,sc){
   openEntry(e);ui.pkdate='';ui.rtm=null;const lab=(JL[e.jour]||'')+(e.jour!=='vacances'?' '+(PL[e.periode]||''):'');
   ui.pkmsg=`Tour ${sc} : graphique ${lab} (${code}).`;
   ui.view='line';ui.lqFocus=false;render();window.scrollTo(0,0);setTimeout(()=>showTour(sc),60);}
+// Entrée / loupe : ouvre directement le bon graphique (celui du jour choisi, sinon le premier où le tour existe)
+function goTour(){
+  const q=(ui.lq||'').trim();if(!q)return;
+  const tds=(ui.today||dayPlan(new Date())).ds;const qd=ui.lqd||tds;
+  const sc=resolveSc(q);const R=searchTours(q,qd).filter(f=>f.sc===sc);
+  if(!R.length){ui.tqShow=true;const w=document.getElementById('tresw');if(w)w.innerHTML=`<p class="help">Aucun tour ${esc(normSc(q))} dans les graphiques.</p>`;return;}
+  ui.tqShow=false;const f=R[0];
+  if(f.jour){openFound(f.id,qd,f.sc);return;}
+  openGraphTour(f.id,f.code,f.sc);
+  const dlab=new Date(qd+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  ui.pkmsg=`${f.sc} ne roule pas le ${dlab} : graphique ${ui.pkmsg.replace(/^Tour \S+ : graphique /,'')}`;render();setTimeout(()=>showTour(f.sc),60);}
 function tourResults(){
   const q=(ui.lq||'').trim();if(!q)return '';
   const tds=(ui.today||dayPlan(new Date())).ds;const qd=ui.lqd||tds;
   const dlab=new Date(qd+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  if(!ui.tqShow)return '';
   const R=searchTours(q,qd);
   if(!R.length)return `<p class="help">Aucun tour ${esc(normSc(q))} dans les graphiques.</p>`;
   const exact=R.some(f=>f.sc===resolveSc(q));const anyDay=R.some(f=>f.jour);
@@ -449,7 +461,7 @@ function tourResults(){
       const lab=(JL[e.jour]||'')+(e.jour&&e.jour!=='vacances'?' '+(PL[e.periode]||''):'');
       const data=f.jour?`data-found="${esc(f.id+'|'+qd+'|'+f.sc)}"`:`data-gt="${esc(f.id+'|'+f.code+'|'+f.sc)}"`;
       return `<button class="tfound ${f.jour?'':'other'}" ${data}><span class="lt-num rtm" style="--lc:${lcol(f.id)}"><span class="rn">${esc(f.id)}</span><span class="rb"></span></span>
-        <span class="tf-body"><b class="mono">${esc(f.sc)}</b> <span class="mono">${hm(a)} – ${hm(b)}</span><span class="tf-meta">${f.jour?'<span class="tf-day">● le '+esc(dlab)+'</span> · ':''}${esc(lab)} · ${esc(f.code)} · voiture ${esc(svs)}</span></span></button>`;}).join('')}</div>`;}
+        <span class="tf-body"><b class="mono">${esc(f.sc)}</b> <span class="mono">${hm(a)} – ${hm(b)}</span><span class="tf-meta">${f.jour?'<span class="tf-day">● le '+esc(dlab)+'</span> · ':''}${esc(lab)} · ${esc(f.code)} · SV ${esc(svs)}</span></span></button>`;}).join('')}</div>`;}
 function findTours(q,ds){q=normSc(q);if(!q)return [];const M=tourIndex(ds);
   if(M[q])return M[q];
   {const m=/^SC[A-Z]+(\d+)$/.exec(q);if(m&&M['SC'+m[1]])return M['SC'+m[1]];} // SCE564 → SC564
@@ -542,7 +554,7 @@ function exitFull(){ui.full=false;document.documentElement.classList.remove('ful
 ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement)&&ui.full){ui.full=false;document.documentElement.classList.remove('fullon');render();}}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.full){exitFull();}});
 function header(){
-  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'}</span>`;
+  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 01/11 18h05</span>`;
   const canSave=caps.artifact!==null;
   return `<header class="top">
     <div class="ttl"><img class="brandlogo" src="${LOGO}" alt="VigigraF" width="165" height="40">${ui.view==='home'?`<span class="eyebrow">Dépôt Saint-Pierre · ${LIB.order.length} ligne${LIB.order.length>1?'s':''}</span><h1>Lignes</h1></div>`:`<span class="eyebrow">Dépôt Saint-Pierre · ${esc(JL[ui.pick.jour])} ${esc(PL[ui.pick.periode])} · ${esc(ui.entry.pdf||S.version)}</span>
@@ -579,7 +591,7 @@ function homeView(){
       <span class="lt-meta">${nG} graphicage${nG>1?'s':''} · ${esc(JOURS.filter(([j])=>L.catalog.some(c=>c.jour===j)).map(([,l])=>l).join(', '))}</span>
       <span class="lt-today ${td.ok?'ok':''}">${td.ok?'● ':''}${esc(td.txt)}</span>${L.note?`<span class="lt-note">${esc(L.note)}</span>`:''}</span></button>`;};
   const tds=(ui.today||dayPlan(new Date())).ds;const qd=ui.lqd||tds;
-  return `<div class="homebar"><div class="tsearch"><label class="field lsearch">Rechercher un tour <input id="lq" class="mono" placeholder="ex. SC271 ou 271" value="${esc(ui.lq||'')}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search"></label>
+  return `<div class="homebar"><div class="tsearch"><label class="field lsearch">Rechercher un tour <input id="lq" class="mono" placeholder="ex. SC271 ou 271" value="${esc(ui.lq||'')}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search"></label><button class="tgo" data-act="tgo" aria-label="Chercher le tour">Chercher</button>
     <label class="field">le <input id="lqd" type="date" value="${esc(qd)}"></label></div>
     <span class="status">${ids.length} ligne${ids.length>1?'s':''}</span></div><div id="tresw">${tourResults()}</div>
   <div class="lgrid">${shown.map(tile).join('')||`<p class="help">Aucune ligne ne correspond à « ${esc(q)} ».</p>`}</div>
@@ -750,11 +762,11 @@ function homePanel(){
   const R=S.rules;
   return `<h2>Vue d'ensemble</h2>
   <div class="ov-grid"><div class="ov-col">
-  <div class="kv"><div><span>Tours</span><b>${N}</b></div><div><span>Services voiture</span><b>${D.svs.length}</b></div><div><span>Courses</span><b>${S.courses.filter(c=>c.t==='Régulier').length}</b></div>
+  <div class="kv"><div><span>Tours</span><b>${N}</b></div><div><span>SV</span><b>${D.svs.length}</b></div><div><span>Courses</span><b>${S.courses.filter(c=>c.t==='Régulier').length}</b></div>
   <div><span>Conduite</span><b>${dur(tc)}</b></div><div><span>Moy. cond</span><b>${dur(Math.floor(tc/N))}</b></div><div><span>Moy. trav</span><b>${dur(Math.floor(tt/N))}</b></div></div>
   </div><div class="ov-col">
   <h3>Contrôles</h3>${al}
-  <div class="help"><p>Cliquez une <b>étiquette SC</b> sous le graphique pour suivre un conducteur d'un service voiture à l'autre.</p><p>Cliquez une <b>course</b> ou une <b>relève</b> pour la modifier : heures, ligne, conducteur, relève. Le communiqué se recalcule.</p></div>
+  <div class="help"><p>Cliquez une <b>étiquette SC</b> sous le graphique pour suivre un conducteur d'un SV à l'autre.</p><p>Cliquez une <b>course</b> ou une <b>relève</b> pour la modifier : heures, ligne, conducteur, relève. Le communiqué se recalcule.</p></div>
   <button data-act="add" style="align-self:flex-start">+ Ajouter une course</button>
   <button data-act="reset" class="${ui.confirmReset?'danger':''}" style="align-self:flex-start">${ui.confirmReset?'Confirmer : effacer mes modifications de ce graphicage':'Repartir des données du PDF (ce graphicage)'}</button>
   </div><div class="ov-col">
@@ -867,7 +879,7 @@ function communique(){
   const N=D.tours.length;
   return `<section class="comm"><div class="head"><h2>Communiqué</h2><span class="status">${Object.keys(S.ref||{}).length?"Valeur barrée = valeur d'origine du PDF quand elle a changé":"Calculé par l'appli : ce PDF ne contient pas de communiqué"} · cliquez une ligne pour voir le tour</span></div>
   <div class="tablewrap"><table>
-  <thead><tr><th class="l" rowspan="2">Tour</th><th class="l" rowspan="2">Services voiture</th><th class="grp" colspan="3">1<sup>re</sup> partie</th><th class="grp" colspan="3">2<sup>e</sup> partie</th><th class="grp" colspan="9">Temps</th></tr>
+  <thead><tr><th class="l" rowspan="2">Tour</th><th class="l" rowspan="2">SV</th><th class="grp" colspan="3">1<sup>re</sup> partie</th><th class="grp" colspan="3">2<sup>e</sup> partie</th><th class="grp" colspan="9">Temps</th></tr>
   <tr><th class="sep">Cde</th><th>De</th><th>A</th><th class="sep">Cde</th><th>De</th><th>A</th><th class="sep">Cond</th><th>CDE</th><th>Dépla</th><th>Pause</th><th>Trav</th><th>Nuits</th><th class="l">Repas</th><th>Comp</th><th>Ampli jr</th></tr></thead>
   <tbody>${rows}</tbody>
   <tfoot><tr><td class="l">${N} tours</td><td class="l muted">moy. cond ${dur(Math.floor(tot.cond/N))} · moy. trav ${dur(Math.floor(tot.trav/N))}</td><td class="sep" colspan="3"></td><td class="sep" colspan="3"></td>
@@ -900,7 +912,7 @@ function toCSV(){
   const q=v=>{v=String(v??'');return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
   const sorted=[...S.courses].sort((a,b)=>D.svs.indexOf(a.sv)-D.svs.indexOf(b.sv)||a.d-b.d);
   const c1=[['SV','Ligne','Tour','Type','Sens','Code départ','Lieu départ','Heure départ','Code arrivée','Lieu arrivée','Heure arrivée','Relève','Tour entrant']].concat(sorted.map(c=>[c.sv,c.l,c.sc,c.t,c.s,c.f,LIEUX[c.f]||'',hm(c.d),c.to,LIEUX[c.to]||'',hm(c.a),c.rel?hm(c.rel.t):'',c.rel?c.rel.sc:'']));
-  const c2=[['Tour','Services voiture','Cde','De','A','Cde','De','A','Cond','CDE','Dépla','Pause','Trav','Nuits','Repas','Comp','Ampli jr']].concat(D.tours.map(sc=>{const C=D.C[sc],p1=C.parts[0]||{},p2=C.parts[1]||{};return [sc,[...new Set(D.P[sc].map(p=>p.sv))].join(' '),hm(p1.cde),hm(p1.de),hm(p1.a),hm(p2.cde),hm(p2.de),hm(p2.a),dur(C.cond),dur(C.cde),dur(C.depla),dur(C.pause),dur(C.trav),dur(C.nuits),C.repas?'m':'',dur(C.comp),dur(C.amp)];}));
+  const c2=[['Tour','SV','Cde','De','A','Cde','De','A','Cond','CDE','Dépla','Pause','Trav','Nuits','Repas','Comp','Ampli jr']].concat(D.tours.map(sc=>{const C=D.C[sc],p1=C.parts[0]||{},p2=C.parts[1]||{};return [sc,[...new Set(D.P[sc].map(p=>p.sv))].join(' '),hm(p1.cde),hm(p1.de),hm(p1.a),hm(p2.cde),hm(p2.de),hm(p2.a),dur(C.cond),dur(C.cde),dur(C.depla),dur(C.pause),dur(C.trav),dur(C.nuits),C.repas?'m':'',dur(C.comp),dur(C.amp)];}));
   return [c1,c2].map(t=>t.map(r=>r.map(q).join(';')).join('\r\n'));
 }
 function buildDoc(){
@@ -1015,7 +1027,7 @@ async function exportPDF(btn){
     const body=D.tours.map(sc=>{const C=D.C[sc],p1=C.parts[0]||{},p2=C.parts[1]||{};return [sc,[...new Set(D.P[sc].map(p=>p.sv))].join(' · '),hm(p1.cde),hm(p1.de),hm(p1.a),hm(p2.cde),hm(p2.de),hm(p2.a),dur(C.cond),dur(C.cde),dur(C.depla),dur(C.pause),dur(C.trav),dur(C.nuits),C.repas?'m':'',dur(C.comp),dur(C.amp)];});
     const N=D.tours.length,sum=k=>D.tours.reduce((a,sc)=>a+D.C[sc][k],0);
     const foot=[[`${N} tours`,`moy. cond ${dur(Math.floor(sum('cond')/N))} · moy. trav ${dur(Math.floor(sum('trav')/N))}`,'','','','','','',dur(sum('cond')),dur(sum('cde')),dur(sum('depla')),dur(sum('pause')),dur(sum('trav')),dur(sum('nuits')),String(D.tours.filter(sc=>D.C[sc].repas).length||''),dur(sum('comp')),dur(sum('amp'))]];
-    doc.autoTable({startY:M+40,margin:{left:M,right:M},head:[['Tour','Services voiture','Cde','De','A','Cde','De','A','Cond','CDE','Dépla','Pause','Trav','Nuits','Repas','Comp','Ampli jr']],body,foot,theme:'grid',
+    doc.autoTable({startY:M+40,margin:{left:M,right:M},head:[['Tour','SV','Cde','De','A','Cde','De','A','Cond','CDE','Dépla','Pause','Trav','Nuits','Repas','Comp','Ampli jr']],body,foot,theme:'grid',
       styles:{font:'helvetica',fontSize:9,cellPadding:4,halign:'right',lineColor:hex(col.rule),lineWidth:0.5,textColor:hex(col.ink)},
       headStyles:{fillColor:hex(col.band2),textColor:hex(col.ink),fontStyle:'bold',halign:'center'},
       footStyles:{fillColor:hex(col.band),textColor:hex(col.ink),fontStyle:'bold'},alternateRowStyles:{fillColor:hex(col.band2)},
@@ -1049,6 +1061,7 @@ document.addEventListener('click',async e=>{
   if(act==='today'){const pl=dayPlan(new Date());ui.today=pl;ui.pkdate='';openPlan(pl,'');render();return;}
   if(act==='full'){enterFull();return;}
   if(act==='unfull'){exitFull();return;}
+  if(act==='tgo'){goTour();return;}
   if(act==='close'){ui.mode='home';ui.sel=null;ui.csv=null;ui.q='';render();return;}
   if(act==='undo'){if(undo.length){const u=undo.pop();if(u.line!==CL)CL=u.line;LN().graphs[u.code]=JSON.parse(u.s);const e=LN().catalog.find(x=>x.code===u.code&&x.jour===ui.pick.jour&&x.periode===ui.pick.periode)||LN().catalog.find(x=>x.code===u.code);if(u.code!==CUR)openEntry(e);else useGraph(CUR);saveDraft();if(ui.mode==='course'){ui.mode='home';}render();}return;}
   if(act==='discard'){LIB=JSON.parse(LIB0);useGraph(CUR);dirty=false;undo=[];ui.banner=null;persist();render();return;}
@@ -1086,11 +1099,11 @@ document.addEventListener('wheel',e=>{
   const rest=dy-inner;
   if(Math.abs(rest)>0.5&&!ui.full)window.scrollBy(0,rest);
 },{passive:false});
-document.addEventListener('keydown',e=>{if(e.target.id==='lq'&&e.key==='Enter'){const b=document.querySelector('.tfound');if(b){e.preventDefault();b.click();}return;}if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.line){e.preventDefault();e.target.click();}});
+document.addEventListener('keydown',e=>{if(e.target.id==='lq'&&e.key==='Enter'){e.preventDefault();e.target.blur();goTour();return;}if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.line){e.preventDefault();e.target.click();}});
 document.addEventListener('change',e=>{setTimeout(()=>onChange(e),0);});
 function onChange(e){
   const id=e.target.id;
-  if(id==='lqd'){ui.lqd=e.target.value||'';const w=document.getElementById('tresw');if(w)w.innerHTML=tourResults();else render();return;}
+  if(id==='lqd'){ui.lqd=e.target.value||'';return;}
   if(id==='pkdate'){const v=e.target.value;ui.pkdate=v;if(!v){ui.pkmsg='';render();return;}const d=new Date(v+'T12:00:00');const pl=dayPlan(d);
     const lab=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
     if(pl.none){ui.pkmsg=`Le ${lab} : pas de service.`;render();return;}
@@ -1109,7 +1122,7 @@ function onChange(e){
   if(id&&id.startsWith('t-')&&ui.sel){const k=id.slice(2);const sc=ui.sel;
     change(()=>{const t=S.over.tours[sc]=S.over.tours[sc]||{};t[k]=k==='repas'?e.target.checked:Math.max(0,+e.target.value||0);});return;}
 }
-document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.value;const w=document.getElementById('tresw');if(w)w.innerHTML=tourResults();else render();return;}if(e.target.id==='zoom'||e.target.id==='zoomf'){const old=ui.cw;ui.cw=+e.target.value;const s=document.querySelector('.scroller');if(!s)return;const c=(s.scrollLeft+s.clientWidth/2)/old;const top=s.scrollTop;s.innerHTML=board();s.scrollTop=top;s.scrollLeft=Math.max(0,c*ui.cw-s.clientWidth/2);}});
+document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.value;ui.tqShow=false;const w=document.getElementById('tresw');if(w)w.innerHTML='';return;}if(e.target.id==='zoom'||e.target.id==='zoomf'){const old=ui.cw;ui.cw=+e.target.value;const s=document.querySelector('.scroller');if(!s)return;const c=(s.scrollLeft+s.clientWidth/2)/old;const top=s.scrollTop;s.innerHTML=board();s.scrollTop=top;s.scrollLeft=Math.max(0,c*ui.cw-s.clientWidth/2);}});
 
 // ?ligne=12 (ou 15S, 80, 509…) : ouvre directement la ligne au chargement
 (function(){
@@ -1125,8 +1138,8 @@ document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.valu
   if(sq){const c=findTours(sq,dq).filter((f,i,a)=>f.sc===a[0].sc);const hit=(id&&c.find(f=>f.id===id))||c[0];
     if(hit)id=hit.id;
     else{const R=searchTours(sq,dq).filter(f=>f.sc===resolveSc(sq));const R2=id?R.filter(f=>f.id===id):R;
-      if(R2.length===1){const f=R2[0];setTimeout(()=>{openGraphTour(f.id,f.code,f.sc);},0);return;}
-      ui.view='home';ui.lq=sq;ui.lqd=dq===today?'':dq;return;}}
+      if(R2.length){ui.lq=sq;ui.lqd=dq===today?'':dq;setTimeout(()=>{goTour();},0);return;}
+      ui.view='home';ui.lq=sq;ui.lqd=dq===today?'':dq;ui.tqShow=true;return;}}
   if(!id)return;
   CL=id;
   if(dq!==today){ui.pkdate=dq;const d=new Date(dq+'T12:00:00');openPlan(dayPlan(d),'Le '+d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}));}
