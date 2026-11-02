@@ -202,7 +202,7 @@ tr.r{cursor:pointer}
 tbody tr.r:hover td,tbody tr.r:hover td.cond{background:color-mix(in srgb,var(--l12) 28%,var(--sheet))}
 tbody tr.sel td,tbody tr.sel td.cond{background:#FFE45C!important;color:#111!important}tbody tr.sel td *{color:#111!important}
 td.key{font-weight:600}
-tbody tr td.cond{background:color-mix(in srgb,var(--l12b) 16%,transparent);font-weight:600}
+tbody tr td.cond{font-weight:600}
 td .was{display:block;font-size:10px;color:var(--muted);text-decoration:line-through}
 td.chg{color:var(--warn)}
 tfoot td{font-weight:600;border-top:1px solid var(--rule);border-bottom:0}
@@ -589,7 +589,7 @@ function exitFull(){ui.full=false;document.documentElement.classList.remove('ful
 ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement)&&ui.full){ui.full=false;document.documentElement.classList.remove('fullon');render();}}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.full){exitFull();}});
 function header(){
-  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 01/11 20h37</span>`;
+  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 02/11 06h14</span>`;
   const canSave=caps.artifact!==null;
   return `<header class="top">
     <div class="ttl"><img class="brandlogo" src="${LOGO}" alt="VigigraF" width="165" height="40">${ui.view==='home'?`<span class="eyebrow">Dépôt Saint-Pierre · ${LIB.order.length} ligne${LIB.order.length>1?'s':''}</span><h1>Lignes</h1></div>`:`<span class="eyebrow">Dépôt Saint-Pierre · ${esc(JL[ui.pick.jour])} ${esc(PL[ui.pick.periode])} · ${esc(ui.entry.pdf||S.version)}</span>
@@ -772,7 +772,7 @@ function board(){
     const items=scRow[sv].sort((a,b)=>a.x-b.x);let end=-1e9;const y0=L.rows[sv].y;
     for(const k of items){if(k.x<end+3)k.x=end+3;end=k.x+k.w;
       const col=k.on?'var(--accent)':'var(--muted)';
-      labs+=`<g class="tourlab" data-sc="${k.sc}" opacity="${k.fade?0.45:1}"><path d="M${k.xs} ${y0+55}V${y0+60}H${k.xe}V${y0+55}" fill="none" stroke="${col}" stroke-width="${k.on?2:1}"/>
+      labs+=`<g class="tourlab" data-sc="${k.sc}" opacity="${k.fade?0.45:1}"><rect x="${k.x-4}" y="${y0+56}" width="48" height="26" fill="transparent"/><path d="M${k.xs} ${y0+55}V${y0+60}H${k.xe}V${y0+55}" fill="none" stroke="${col}" stroke-width="${k.on?2:1}"/>
       <rect x="${k.x}" y="${y0+63}" width="40" height="14" rx="2" fill="${k.on?'var(--accent)':'var(--sheet)'}" stroke="${k.on?'var(--accent)':'var(--rule)'}"/>
       <text x="${k.x+20}" y="${y0+73.5}" font-size="10" font-weight="600" text-anchor="middle" fill="${k.on?'var(--sheet)':'var(--ink)'}">${esc(k.sc)}</text></g>`;}
   }
@@ -802,7 +802,7 @@ function homePanel(){
   <div><span>Conduite</span><b>${dur(tc)}</b></div><div><span>Moy. cond</span><b>${dur(Math.floor(tc/N))}</b></div><div><span>Moy. trav</span><b>${dur(Math.floor(tt/N))}</b></div></div>
   </div><div class="ov-col">
   <h3>Contrôles</h3>${al}
-  <div class="help"><p>Cliquez une <b>étiquette SC</b> sous le graphique pour suivre un conducteur d'un SV à l'autre.</p><p>Cliquez une <b>course</b> ou une <b>relève</b> pour la modifier : heures, ligne, conducteur, relève. Le communiqué se recalcule.</p></div>
+  <div class="help"><p>Touchez une <b>course</b> ou une <b>étiquette SC</b> du graphique pour surligner son tour dans le graphique et dans le communiqué (et l'inverse : touchez une ligne du communiqué).</p><p>Touchez à nouveau une course du tour surligné, ou une <b>relève</b>, pour la modifier : heures, ligne, conducteur, relève. Le communiqué se recalcule.</p></div>
   <button data-act="add" style="align-self:flex-start">+ Ajouter une course</button>
   <button data-act="reset" class="${ui.confirmReset?'danger':''}" style="align-self:flex-start">${ui.confirmReset?'Confirmer : effacer mes modifications de ce graphicage':'Repartir des données du PDF (ce graphicage)'}</button>
   </div><div class="ov-col">
@@ -925,7 +925,9 @@ function communique(){
 
 // ---------------------------------------------------------------- actions
 function openCourse(id){const c=S.courses.find(c=>c.id===+id);if(!c)return;ui.course=JSON.parse(JSON.stringify(c));ui.mode='course';ui.confirmDel=false;ui.err='';ui.csv=null;render();}
-function selectTour(sc){if(!D.P[sc])return;ui.svSel=null;ui.sel=sc;ui.mode='tour';ui.csv=null;ui.q=sc;render();
+function selectTour(sc,stay){if(!D.P[sc])return;ui.svSel=null;ui.sel=sc;ui.mode='tour';ui.csv=null;ui.q=sc;
+  if(stay){const s=document.querySelector('.scroller');const l=s?s.scrollLeft:0,tp=s?s.scrollTop:0,y=window.scrollY;render();const s2=document.querySelector('.scroller');if(s2){s2.scrollLeft=l;s2.scrollTop=tp;}window.scrollTo(0,y);return;}
+  render();
   const p=D.P[sc][0];const s=document.querySelector('.scroller');const R=D.L&&D.L.rows[p.sv];const px=D.pieceX&&D.pieceX[sc]&&D.pieceX[sc][0];
   if(s&&R&&px){s.scrollTo({left:Math.max(0,px[0]-120),top:Math.max(0,R.y-40),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}}
 function val(id){const e=document.getElementById(id);return e?e.value:'';}
@@ -1118,8 +1120,11 @@ document.addEventListener('click',async e=>{
     catch(err){t.disabled=false;t.textContent='Enregistrer la version';const msg=err&&err.code==='conflict'?'Une autre version a été enregistrée entre-temps ; la page va se recharger.':(err&&(err.code==='not_granted'||err.code==='not_writer'))?"Vous n'avez pas le droit d'enregistrer cette page. Exportez en CSV pour garder vos modifications.":"L'enregistrement a échoué. Vos modifications restent dans ce navigateur.";
       const st=document.querySelector('.status');if(st){st.textContent=msg;st.classList.add('dirty');}}
     return;}
-  if(t.dataset.id){openCourse(t.dataset.id);return;}
-  if(t.dataset.sc){selectTour(t.dataset.sc);return;}
+  if(t.dataset.id){
+    // dans le graphique : 1er toucher = surligner le tour (graphique + communiqué), 2e toucher sur ce tour = détail de la course
+    if(t.classList.contains('c-reg')){const c=S.courses.find(x=>x.id===+t.dataset.id);if(c&&c.sc&&D.P[c.sc]&&ui.sel!==c.sc&&!(c.rel&&c.rel.sc===ui.sel)){selectTour(c.sc,true);return;}}
+    openCourse(t.dataset.id);return;}
+  if(t.dataset.sc){selectTour(t.dataset.sc,!!t.closest('#board'));return;}
 });
 // défilement vertical continu : graphique puis page, sans rebond
 document.addEventListener('wheel',e=>{
