@@ -423,7 +423,7 @@ function allSv(){if(ALLSV)return ALLSV;ALLSV={};
 function dayCodes(ds){if(DAYC[ds])return DAYC[ds];const pl=dayPlan(new Date(ds+'T12:00:00'));const o=new Set();
   for(const id of LIB.order){const c=planCode(id,pl);if(c)o.add(id+'|'+c);}return DAYC[ds]=o;}
 // SV : 4 chiffres (ligne + service), 5 pour les lignes à 3 chiffres (ex. 54021)
-function goSv(sv){
+function goSv(sv,hq){
   const tds=(ui.today||dayPlan(new Date())).ds;const qd=ui.lqd||tds;
   const R=allSv()[sv]||[];const w=document.getElementById('tresw');
   if(!R.length){ui.tqShow=true;if(w)w.innerHTML=`<p class="help">Aucun service SV ${esc(sv)} dans les graphiques.</p>`;return;}
@@ -434,8 +434,14 @@ function goSv(sv){
     CL=g.id;const e=LIB.lines[g.id].catalog.find(c=>c.code===g.code);if(!e)return;openEntry(e);ui.pkdate='';ui.rtm=null;
     const lab=(JL[e.jour]||'')+(e.jour!=='vacances'?' '+(PL[e.periode]||''):'');
     ui.pkmsg=`SV ${sv} ne roule pas le ${dlab} : graphique ${lab} (${g.code}).`;}
-  ui.view='line';ui.lqFocus=false;render();window.scrollTo(0,0);setTimeout(()=>showSv(sv),60);}
-function showSv(sv){
+  ui.view='line';ui.lqFocus=false;render();window.scrollTo(0,0);setTimeout(()=>showSv(sv,hq),60);}
+// &heure=12:13 : sur ce SV, le tour qui roule à cette heure (relève, partie supplémentaire…)
+function tourAt(sv,t){if(!D||!D.P||t==null)return null;let best=null,bd=1e9;
+  for(const sc in D.P)for(const p of D.P[sc]){if(p.sv!==sv)continue;
+    for(const tt of [t,t+1440]){if(tt>=p.start-2&&tt<p.end)return sc;const d=Math.abs(p.start-tt);if(d<bd&&d<=20){bd=d;best=sc;}}}
+  return best;}
+function showSv(sv,hq){
+  if(hq!=null){const sc=tourAt(sv,hq);if(sc&&showTour(sc))return;}
   ui.svSel=sv;ui.sel=null;ui.mode='home';ui.csv=null;render();
   setTimeout(()=>{const s=document.querySelector('.scroller');if(!s)return;if(!ui.full)s.scrollIntoView({block:'start',behavior:'auto'});
     const R=D&&D.L&&D.L.rows[sv];if(R)s.scrollTop=Math.max(0,R.y-40);},120);}
@@ -589,7 +595,7 @@ function exitFull(){ui.full=false;document.documentElement.classList.remove('ful
 ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement)&&ui.full){ui.full=false;document.documentElement.classList.remove('fullon');render();}}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.full){exitFull();}});
 function header(){
-  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 04/11 06h01</span>`;
+  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 04/11 06h09</span>`;
   const canSave=caps.artifact!==null;
   return `<header class="top">
     <div class="ttl"><img class="brandlogo" src="${LOGO}" alt="VigigraF" width="165" height="40">${ui.view==='home'?`<span class="eyebrow">Dépôt Saint-Pierre · ${LIB.order.length} ligne${LIB.order.length>1?'s':''}</span><h1>Lignes</h1></div>`:`<span class="eyebrow">Dépôt Saint-Pierre · ${esc(JL[ui.pick.jour])} ${esc(PL[ui.pick.periode])} · ${esc(ui.entry.pdf||S.version)}</span>
@@ -1193,7 +1199,8 @@ document.addEventListener('input',e=>{if(e.target.id==='lq'){ui.lq=e.target.valu
   // &sc=SC271 (ou &tour=SC271) : cherche ce tour dans tous les communiqués du jour et le met en surbrillance
   const svq=(Q.get('sv')||'').toUpperCase().replace(/[^0-9A-Z]/g,'');
   // &sv=1203 : le service voiture prime sur le tour (ex. heures supp. sur une autre ligne que celle du tour)
-  if(svq&&(allSv()[svq]||!(Q.get('sc')||Q.get('tour')))){ui.lq=svq;ui.lqd=dq===today?'':dq;if(allSv()[svq])FS();setTimeout(()=>{goSv(svq);},0);return;}
+  let hq=null;{const m=/^(\d{1,2})[:hH.]?(\d{2})$/.exec((Q.get('heure')||'').trim());if(m&&+m[2]<60)hq=(+m[1])*60+(+m[2]);}
+  if(svq&&(allSv()[svq]||!(Q.get('sc')||Q.get('tour')))){ui.lq=svq;ui.lqd=dq===today?'':dq;if(allSv()[svq])FS();setTimeout(()=>{goSv(svq,hq);},0);return;}
   const sq=normSc(Q.get('sc')||Q.get('tour')||'');
   let absent=false;
   if(sq){const c=findTours(sq,dq).filter((f,i,a)=>f.sc===a[0].sc);const hit=id?c.find(f=>f.id===id):c[0];
