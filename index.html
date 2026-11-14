@@ -595,7 +595,7 @@ function exitFull(){ui.full=false;document.documentElement.classList.remove('ful
 ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement)&&ui.full){ui.full=false;document.documentElement.classList.remove('fullon');render();}}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.full){exitFull();}});
 function header(){
-  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 04/11 06h09</span>`;
+  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 14/11 04h48</span>`;
   const canSave=caps.artifact!==null;
   return `<header class="top">
     <div class="ttl"><img class="brandlogo" src="${LOGO}" alt="VigigraF" width="165" height="40">${ui.view==='home'?`<span class="eyebrow">Dépôt Saint-Pierre · ${LIB.order.length} ligne${LIB.order.length>1?'s':''}</span><h1>Lignes</h1></div>`:`<span class="eyebrow">Dépôt Saint-Pierre · ${esc(JL[ui.pick.jour])} ${esc(PL[ui.pick.periode])} · ${esc(ui.entry.pdf||S.version)}</span>
@@ -735,7 +735,7 @@ function board(){
     ev.forEach(e=>{if(!e.garage&&e.c.rel&&e.c.t==='Régulier')rels.push({cx:(e.col+1)*cw,e});});
     // étiquettes colorées (une par arrêt)
     ev.forEach((e,i)=>{
-      const c=e.c;const dim=ui.hidden[c.l]&&c.t==='Régulier'?' opacity="0.18"':'';
+      const c=e.c;const dim=ui.hidden[c.l]&&(c.t==='Régulier'||c.t==='Entrée')?' opacity="0.18"':'';
       let fill='var(--hlp)',ink='#fff';
       if(e.code==='G'){fill='var(--garage)';ink='var(--garage-ink)';}
       else if(e.code==='D'||e.code==='P'){fill='var(--depot)';ink='var(--depot-ink)';}
@@ -743,7 +743,7 @@ function board(){
       else if(fam==='main'&&e.code===hubCode()){fill='var(--timone)';ink='var(--timone-ink)';}
       else if(fam==='night'&&e.code===(D.heads.night||{}).hub){fill='var(--euro)';ink='var(--euro-ink)';}
       else if(fam==='night'&&e.code===LN().night.other){fill='var(--riau)';}
-      else if(c.t==='Régulier')fill=css(lineOf(c.l).v);
+      else fill=css(lineOf(c.l).v); // tout terminus dans sa couleur (seuls Dépôt et Garé en gris)
       const x1=e.col*cw+2,w=cw-4;
       const tip=e.park?`Stationné en ligne à ${LIEUX[c.to]||c.to} ${hm(e.t)}`:e.garage?`${e.code==='G'?'Garé':'Rentrée dépôt'} ${hm(e.t)}`:`${c.t} ${c.l} · ${c.f} ${hm(c.d)} → ${c.to} ${hm(c.a)} · ${c.sc}${c.rel?' · relève '+hm(c.rel.t)+' par '+c.rel.sc:''}`;
       g+=`<g class="c-reg" data-id="${c.id}"${dim}><title>${esc(tip)}</title><rect x="${x1}" y="${y0+31}" width="${w}" height="19" rx="3" fill="${fill}"/><text x="${x1+w/2}" y="${y0+44.5}" font-size="11" font-weight="600" text-anchor="middle" fill="${ink}">${hm(e.t%1440)}</text>${bad.has(c.id)&&!e.garage?`<rect x="${x1-2}" y="${y0+29}" width="${w+4}" height="23" rx="4" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="3 2"/>`:''}</g>`;
