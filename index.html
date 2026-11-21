@@ -595,7 +595,7 @@ function exitFull(){ui.full=false;document.documentElement.classList.remove('ful
 ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement)&&ui.full){ui.full=false;document.documentElement.classList.remove('fullon');render();}}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.full){exitFull();}});
 function header(){
-  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 17/11 16h48</span>`;
+  const st=`<span class="status">Enregistré sur cet appareil${LIB.savedAt?' · '+esc(new Date(LIB.savedAt).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})):' · données des PDF'} · version 21/11 06h40</span>`;
   const canSave=caps.artifact!==null;
   return `<header class="top">
     <div class="ttl"><img class="brandlogo" src="${LOGO}" alt="VigigraF" width="165" height="40">${ui.view==='home'?`<span class="eyebrow">Dépôt Saint-Pierre · ${LIB.order.length} ligne${LIB.order.length>1?'s':''}</span><h1>Lignes</h1></div>`:`<span class="eyebrow">Dépôt Saint-Pierre · ${esc(JL[ui.pick.jour])} ${esc(PL[ui.pick.periode])} · ${esc(ui.entry.pdf||S.version)}</span>
@@ -697,9 +697,11 @@ function layout(){
   L.height=y;L.width=L.ncols*cw+20;
   return L;
 }
+// relève : à cheval entre l'heure de relève (ou la plus proche avant) et l'heure suivante
+function relCol(ev,e){let k=e;for(const x of ev)if(!x.garage&&x.t<=e.c.rel.t&&x.col>=k.col)k=x;return k.col;}
 function relX(L,sv,t,sc){
   const r=L.rows[sv];if(!r)return null;
-  for(const e of r.ev){const c=e.c;if(!e.garage&&c.rel&&c.rel.t===t&&(!sc||c.rel.sc===sc||c.sc===sc))return (e.col+1)*L.cw;}
+  for(const e of r.ev){const c=e.c;if(!e.garage&&c.rel&&c.rel.t===t&&(!sc||c.rel.sc===sc||c.sc===sc))return (relCol(r.ev,e)+1)*L.cw;}
   return null;
 }
 function evX(L,sv,t,edge){
@@ -732,7 +734,7 @@ function board(){
     g+=`<line x1="0" x2="${W}" y1="${y0+ROWH}" y2="${y0+ROWH}" stroke="var(--band2)"/>`;
     // relèves de la rangée
     const rels=[];
-    ev.forEach(e=>{if(!e.garage&&e.c.rel&&e.c.t==='Régulier')rels.push({cx:(e.col+1)*cw,e});});
+    ev.forEach(e=>{if(!e.garage&&e.c.rel&&e.c.t==='Régulier')rels.push({cx:(relCol(ev,e)+1)*cw,e});});
     // étiquettes colorées (une par arrêt)
     ev.forEach((e,i)=>{
       const c=e.c;const dim=ui.hidden[c.l]&&(c.t==='Régulier'||c.t==='Entrée')?' opacity="0.18"':'';
@@ -768,7 +770,7 @@ function board(){
     const ps=D.P[sc];const on=sel===sc;const fade=sel&&!on;
     const pos=ps.map(p=>L.rows[p.sv]?pieceX(L,p):null);D.pieceX[sc]=pos;
     for(let i=1;i<ps.length;i++){
-      const a=ps[i-1],b=ps[i];if(!pos[i-1]||!pos[i])continue;
+      const a=ps[i-1],b=ps[i];if(!pos[i-1]||!pos[i]||a.sv===b.sv)continue; // même SV : pas de trait le long de la rangée (il couvrirait le tour intermédiaire)
       const ya=L.rows[a.sv].y+60,yb=L.rows[b.sv].y+60;
       links+=`<line x1="${pos[i-1][1]}" y1="${ya}" x2="${pos[i][0]}" y2="${yb}" stroke="${on?'var(--accent)':'var(--muted)'}" stroke-width="${on?2.2:0.8}" opacity="${fade?0.18:on?1:0.55}"/>`;
     }
